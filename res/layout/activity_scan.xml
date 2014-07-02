@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:keepScreenOn="true" >
+    
+    <SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+    
+    <ProgressBar 
+        android:id="@+id/progress"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_centerInParent="true"
+        android:indeterminateOnly="true"
+        android:visibility="invisible" />
+            
+    <RelativeLayout
+        android:id="@+id/result"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="20px"
+        android:visibility="invisible" >
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#A000" />
+
+        <TextView
+            android:id="@+id/result_id"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:gravity="center"
+            android:lines="3"
+            android:ellipsize="end"
+            android:textSize="60px" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="20px"
+            android:text="Tap to dismiss"
+            android:textSize="25px"
+            android:textStyle="bold" />
+
+    </RelativeLayout>
+    
+</RelativeLayout>

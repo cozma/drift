@@ -1,0 +1,24 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.mapping.MainActivity" >
+
+    <item
+        android:id="@+id/zoom_in"
+        android:title="Zoom In"/>
+    <item
+        android:id="@+id/zoom_out"
+        android:title="Zoom Out"/>
+    <item
+        android:id="@+id/overview_path"
+        android:title="Show Overview"/>
+    <item
+        android:id="@+id/rec_vid"
+        android:title="Record Mission"/>
+        <item
+        android:id="@+id/scan_start"
+        android:title="Scan"/>
+    <item
+        android:id="@+id/exit_screen"
+        android:title="Exit"/>
+
+</menu>

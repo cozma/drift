@@ -1,0 +1,12 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.mapping.MainActivity" >
+
+    <item
+        android:id="@+id/menu_item_path"
+        android:title="Find Path"/>
+    <item
+        android:id="@+id/scan_start"
+        android:title="Scan"/>
+
+</menu>

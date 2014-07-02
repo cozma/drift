@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/container"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical"
+    tools:context=".SpeechFragment" >
+
+    <SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <com.mapquest.android.maps.MapView
+        android:id="@+id/map"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:apiKey="AIzaSyBq5gH_Lys3BEvB0yb0w3MmIUWlTcvfP5c"
+        android:clickable="true"
+        android:enabled="true" >
+    </com.mapquest.android.maps.MapView>
+
+    <SeekBar
+        android:id="@+id/zoomLvl"
+        android:layout_width="150dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true" />
+
+    <TextView
+        android:id="@+id/zoomTex"
+        android:layout_width="50dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/zoomLvl"
+        android:layout_centerHorizontal="true"
+        android:text=" " />
+
+    <DigitalClock
+        android:id="@+id/digitalClock1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:text="DigitalClock" />
+
+</RelativeLayout>
