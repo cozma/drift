@@ -1,4 +1,4 @@
-package com.example.mapping;
+package com.bah.mapping;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -30,6 +30,11 @@ import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.mapping.R;
+import com.example.mapping.R.id;
+import com.example.mapping.R.layout;
+import com.example.mapping.R.menu;
+import com.example.mapping.R.raw;
 import com.google.android.glass.app.Card;
 import com.google.android.glass.media.Sounds;
 import com.google.android.glass.view.WindowUtils;

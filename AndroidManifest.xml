@@ -10,6 +10,9 @@
         android:minSdkVersion="16"
         android:targetSdkVersion="16" />
 
+    <supports-screens android:anyDensity="true" />
+    
+    
     <uses-permission android:name="com.example.mapdemo.permission.MAPS_RECEIVE" />
     <uses-permission android:name="com.google.android.glass.permission.DEVELOPMENT" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -44,7 +47,7 @@
             android:required="true" />
         <!-- <uses-library android:name="com.google.android.maps" /> -->
         <activity
-            android:name="com.example.mapping.MainActivity"
+            android:name="com.bah.mapping.MainActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="com.google.android.glass.action.VOICE_TRIGGER" />
@@ -65,7 +68,7 @@
         </activity>
         -->
         <activity
-            android:name="com.example.mapping.PathActivity"
+            android:name="com.bah.mapping.PathActivity"   
             android:configChanges="orientation|screenSize"
             android:label="@string/title_activity_map" >
         </activity>
@@ -77,7 +80,4 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
     </application>
-
-    <supports-screens android:anyDensity="true" />
-
 </manifest>

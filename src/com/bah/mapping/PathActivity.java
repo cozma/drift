@@ -1,35 +1,21 @@
-package com.example.mapping;
+package com.bah.mapping;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import retrofit.Callback;
+import retrofit.RestAdapter;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
@@ -39,8 +25,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorManager;
 import android.media.AudioManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
@@ -60,6 +46,7 @@ import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.example.mapping.R;
 import com.google.android.glass.media.Sounds;
 import com.google.android.glass.touchpad.Gesture;
 import com.google.android.glass.touchpad.GestureDetector;
@@ -87,20 +74,24 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 	 * Alex's Variables for Networking + MapQuest
 	 */
 
-	final static String URL_path = "http://54.198.34.151:7180/path";
-	final static String URL_units = "http://54.198.34.151:7180/units";
-	final static String URL_hazards = "http://54.198.34.151:7180/hazards";
-	private TreeMap<Integer, Coordinate> coords;
+	public static final String ENDPOINT = "http://54.198.34.151:7180";
+	public static final String UNIQUE_TEAM_ID = "/team1"; // add a slash if used
+
+	List<Unit> units = null;
+	List<Hazard> hazards = null;
+	List<Path> paths = null;
+	TextView text;
+
+	private Unit myself;
+
+	protected MapView map;
+	private MyLocationOverlay myLocationOverlay;
 	private List<GeoPoint> coordList;
-	private HttpClient client;
-	private JSONObject read_json;
-	private HashMap<String, List<GeoPoint>> hazardList;
-	private List<GeoPoint> Geopts_for_Hazards;
+	private GeoPoint currentLocation;
+	private AnnotationView annotation;
 
 	private List<GeoPoint> lineData;
 	LineOverlay lineOverlay;
-
-	GeoPoint start;
 
 	float[] mGravity;
 	float[] mGeomagnetic;
@@ -116,11 +107,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 
 	TextView coordTextView;
 	View cardView;
-	AnnotationView annotation;
-	protected MapView map;
-	private MyLocationOverlay myLocationOverlay;
 	TextToSpeech tts;
-	public GeoPoint currentLocation;
 	private static final int SPEECH_REQUEST = 0;
 	public final static String TAG = MainActivity.class.getSimpleName();
 
@@ -138,6 +125,10 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 	Pattern mPattern;
 
 	int mapZoom = 0;
+
+	private UnitAPI unit_api;
+	private HazardAPI hazard_api;
+	private PathAPI path_api;
 
 	/**
 	 * These are the fields to setup the image scanner
@@ -157,6 +148,23 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 	private static final int TYPES = Result.Type.IMAGE | Result.Type.QRCODE;
 
 	/**
+	 * Sleep Detection
+	 */
+	private SleepDetector checkSleep;
+	private Context mContext;
+	private ServiceConnection mServiceConn = new ServiceConnection() {
+		@Override
+		public void onServiceConnected(ComponentName name, IBinder service) {
+
+		}
+
+		@Override
+		public void onServiceDisconnected(ComponentName name) {
+			// Do nothing
+		}
+	};
+
+	/**
 	 * Creates the activity for the smart path finder
 	 */
 	protected void onCreate(Bundle savedInstanceState) {
@@ -173,10 +181,29 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 			StrictMode.setThreadPolicy(policy);
 		}
 
-		coords = new TreeMap<Integer, Coordinate>();
+		/*
+		 * Initial Set Up
+		 */
+
+		RestAdapter adapter = new RestAdapter.Builder().setEndpoint(ENDPOINT)
+				.build();
+
+		unit_api = adapter.create(UnitAPI.class);
+		hazard_api = adapter.create(HazardAPI.class);
+		path_api = adapter.create(PathAPI.class);
+
+		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+		accelerometer = mSensorManager
+				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		magnetometer = mSensorManager
+				.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		coordList = new ArrayList<GeoPoint>();
-		client = new DefaultHttpClient();
-		tts = new TextToSpeech(this, this);
+
+		// myself = new Unit("LeGlass", String.valueOf(azimut),
+		// String.valueOf(currentLocation.getLatitude()),
+		// String.valueOf(currentLocation.getLongitude()), "friendly",
+		// "team1", "0");
+
 		// This is everything for Smart Pathfinder
 		// ----------------------------------------------------------------------
 
@@ -188,26 +215,13 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 		annotation.setScaleX(.35f);
 		annotation.setScaleY(.35f);
 		// this.map.setSatellite(true);
-		start = new GeoPoint(38.8977, -77.0366);
-		map.getController().animateTo(start);
-		map.getController().setCenter(start);
 
 		coordTextView = (TextView) this.findViewById(R.id.coordTextView);
 		zoomLevel = (TextView) this.findViewById(R.id.zoomTex);
 
 		mGestureDetector = createGestureDetector(this);
 
-		/* Networking Threads */
-
-		Threads();
-
-		coords = new TreeMap<Integer, Coordinate>();
-		coordList = new ArrayList<GeoPoint>();
-		hazardList = new HashMap<String, List<GeoPoint>>();
-		client = new DefaultHttpClient();
-
 		zoomLvl = (SeekBar) findViewById(R.id.zoomLvl);
-
 		zoomLvl.setMax(18);
 		zoomLvl.setLeft(2);
 		// zoomLvl.incrementProgressBy(1);
@@ -216,6 +230,29 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 
 		initScanner();
 
+		/*
+		 * Network Connection Polling
+		 */
+
+		new Timer().scheduleAtFixedRate(new TimerTask() {
+			public void run() {
+				requestData();
+			}
+		}, 0, 1000);
+
+		// Eye Scanner
+		// Bind the service to get access to the getDirectionsToRestArea method
+		bindService(new Intent(this, KeepAwakeService.class), mServiceConn, 0);
+
+	}
+
+	/**
+	 * Initialize Sleep Detector
+	 */
+	public void initSleepDetector() {
+		mContext = this;
+		checkSleep = new SleepDetector(mContext);
+		checkSleep.setupReceiver();
 	}
 
 	/**
@@ -466,7 +503,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 			}
 		}
 		android.os.Process.killProcess(android.os.Process.myPid());
-		client.getConnectionManager().shutdown();
 	}
 
 	/**
@@ -645,344 +681,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 
 	}
 
-	/*
-	 * GET Request Methods
-	 */
-
-	public class ReadWrite extends AsyncTask<String, Integer, String> {
-		protected String doInBackground(String... param) {
-			try {
-
-				/*
-				 * READ HERE
-				 */
-				read_json = getCoords();
-				JSONArray data = read_json.getJSONArray("team1");
-				JSONObject info;
-
-				coords.clear();
-
-				coordList.clear();
-
-				for (int i = 0; i < data.length(); i++) {
-					info = data.getJSONObject(i);
-					Coordinate pt = new Coordinate(info.getInt("point"),
-							info.getString("name"), info.getDouble("lat"),
-							info.getDouble("lng"));
-					coords.put(pt.getPoint(), pt);
-					coordList.add(new GeoPoint(pt.getLat(), pt.getLong()));
-				}
-
-				read_json = getHazards();
-				data = read_json.getJSONArray("hazards");
-				hazardList.clear();
-				for (int i = 0; i < data.length(); i++) {
-					info = data.getJSONObject(i);
-					Geopts_for_Hazards = new ArrayList<GeoPoint>();
-					Geopts_for_Hazards = placeGeo(info.getInt("descriptor"),
-							Geopts_for_Hazards, info);
-					hazardList.put(
-							info.getString("lat1") + info.getString("lng1")
-									+ info.getString("lat2")
-									+ info.getString("lng2"),
-							Geopts_for_Hazards); // hash
-
-				}
-
-				/*
-				 * WRITE HERE
-				 */
-
-				sendPos();
-
-				return "Success";
-
-			} catch (Exception e) {
-				return "Fail";
-			}
-		}
-
-		protected void onPostExecute(String result) {
-
-			PathActivity.this.runOnUiThread(new Runnable() {
-				public void run() {
-					removeOverlay("paths");
-					addLines();
-					removeOverlay("points");
-					addPoints();
-					removeOverlay("hazards");
-					addHazard();
-					overview();
-				}
-			});
-
-		}
-	}
-
-	private List<GeoPoint> placeGeo(int descriptor, List<GeoPoint> list,
-			JSONObject info) throws JSONException {
-		if (descriptor == 4) {
-			descriptor = 2;
-			for (int i = 1; i <= descriptor; i++) {
-				list.add(new GeoPoint(
-						info.getDouble("lat" + String.valueOf(i)), info
-								.getDouble("lng" + String.valueOf(i)))); /*
-																		 * ORDER
-																		 * DEPENDENT
-																		 */
-			}
-		}
-
-		return list;
-	}
-
-	/*
-	 * Returns the JSON file as an object
-	 */
-
-	public JSONObject getCoords() throws ClientProtocolException, IOException,
-			JSONException {
-		StringBuilder url = new StringBuilder(URL_path);
-
-		HttpGet get = new HttpGet(url.toString());
-
-		HttpResponse response = client.execute(get);
-		/* A successful connection */
-		if (response.getStatusLine().getStatusCode() == 200) {
-			HttpEntity entity = response.getEntity();
-			String data = EntityUtils.toString(entity);
-			JSONObject last = new JSONObject(data);
-			return last;
-		} else {
-			return null;
-		}
-	}
-
-	public JSONObject getHazards() throws ClientProtocolException, IOException,
-			JSONException {
-		StringBuilder url = new StringBuilder(URL_hazards);
-
-		HttpGet get = new HttpGet(url.toString());
-
-		HttpResponse response = client.execute(get);
-		/* A successful connection */
-		if (response.getStatusLine().getStatusCode() == 200) {
-			HttpEntity entity = response.getEntity();
-			String data = EntityUtils.toString(entity);
-			JSONObject last = new JSONObject(data);
-			return last;
-		} else {
-			return null;
-		}
-	}
-
-	/*
-	 * The actual data that the device is POSTing to the server
-	 */
-
-	public void sendPos() throws ClientProtocolException, IOException,
-			URISyntaxException {
-
-		StringBuilder url = new StringBuilder(URL_units);
-		HttpPost request = new HttpPost(url.toString());
-
-		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-		nameValuePairs.add(new BasicNameValuePair("ID", "Le Glass"));
-		nameValuePairs.add(new BasicNameValuePair("bearing", truncateDecimal(
-				azimut, 4).toString()));
-		nameValuePairs.add(new BasicNameValuePair("lat", "38.902317"));
-		nameValuePairs.add(new BasicNameValuePair("lng", "-77.038899"));
-		// nameValuePairs.add(new BasicNameValuePair("lat",
-		// truncateDecimal(currentLocation.getLatitude(),4).toString()));
-		// nameValuePairs.add(new BasicNameValuePair("lng",
-		// truncateDecimal(currentLocation.getLongitude(),4).toString()));
-		nameValuePairs.add(new BasicNameValuePair("type", "neutral"));
-
-		UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs,
-				"UTF-8");
-		request.setEntity(form);
-		client.execute(request);
-	}
-
-	private static BigDecimal truncateDecimal(double x, int numberofDecimals) {
-		if (x > 0) {
-			return new BigDecimal(String.valueOf(x)).setScale(numberofDecimals,
-					BigDecimal.ROUND_FLOOR);
-		} else {
-			return new BigDecimal(String.valueOf(x)).setScale(numberofDecimals,
-					BigDecimal.ROUND_CEILING);
-		}
-	}
-
-	/*
-	 * UI Updating Methods
-	 */
-
-	private void addPoints() {
-
-		// list of GeoPoint objects to be used to draw line
-		Drawable icon = getResources().getDrawable(R.drawable.location_marker);
-		final DefaultItemizedOverlay poiOverlay = new DefaultItemizedOverlay(
-				icon);
-		for (Coordinate coord : coords.values()) {
-			if (!coord.getName().equals("NONE")) {
-				poiOverlay.addItem(new OverlayItem(new GeoPoint(coord.getLat(),
-						coord.getLong()), coord.getName(), "Checkpoint #"
-						+ coord.getPoint()));
-			}
-		}
-
-		poiOverlay.setTapListener(new ItemizedOverlay.OverlayTapListener() {
-			public void onTap(GeoPoint pt, MapView mapView) {
-				// when tapped, show the annotation for the overlayItem
-				int lastTouchedIndex = poiOverlay.getLastFocusedIndex();
-				if (lastTouchedIndex > -1) {
-					OverlayItem tapped = poiOverlay.getItem(lastTouchedIndex);
-					annotation.showAnnotationView(tapped);
-				}
-			}
-		});
-		poiOverlay.setKey("points");
-		map.getOverlays().add(poiOverlay);
-	}
-
-	private void addLines() {
-
-		Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-		paint.setColor(Color.RED);
-		paint.setStyle(Paint.Style.STROKE);
-		paint.setStrokeWidth(10);
-		/* list of GeoPoint objects to be used to draw line */
-		lineData = new ArrayList<GeoPoint>();
-		for (Coordinate pt : coords.values()) {
-			lineData.add(new GeoPoint(pt.getLat(), pt.getLong()));
-
-		}
-		/* apply line style & data and add to map */
-		lineOverlay = new LineOverlay(paint);
-		lineOverlay.setKey("paths");
-		lineOverlay.setData(lineData, true);
-		map.getOverlays().add(lineOverlay);
-
-	}
-
-	private void addHazard() {
-
-		Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-		paint.setColor(Color.BLUE);
-		paint.setStyle(Paint.Style.FILL);
-		paint.setAlpha(40);
-
-		for (String key : hazardList.keySet()) {
-			List<GeoPoint> hazard_values = hazardList.get(key);
-
-			RectangleOverlay recOverlay = new RectangleOverlay(
-					BoundingBox.calculateBoundingBoxGeoPoint(hazard_values),
-					paint);
-			recOverlay.setKey("hazards");
-			map.getOverlays().add(recOverlay);
-
-			// if(hazard_values.size() == 1){
-			//
-			// final int level =
-			// Integer.parseInt(key.substring(0,key.indexOf(".")));
-			// final String name = key.substring(key.indexOf(".")+1);
-			// final double lat = hazard_values.get(0).getLatitude();
-			// final double lng = hazard_values.get(0).getLongitude();
-			// MainActivity.this.runOnUiThread(new Runnable() {
-			// public void run() {
-			// addSingularHazard(new Coordinate(level, name, lat, lng));
-			// }
-			// });
-			// }else{
-
-			// }
-		}
-	}
-
-	protected boolean isRouteDisplayed() {
-		return false;
-	}
-
-	/*
-	 * ASync Threads for POST and GET requests
-	 */
-
-	private void Threads() {
-
-		/*
-		 * Polls the GET requests every 1 second(s), starting at runtime.
-		 */
-
-		new Timer().scheduleAtFixedRate(new TimerTask() {
-			public void run() {
-				long startTime = System.currentTimeMillis();
-
-				new ReadWrite().execute("NIL");
-
-				long stopTime = System.currentTimeMillis();
-				long elapsedTime = stopTime - startTime;
-
-				Log.d("THREAD TIME: ", String.valueOf(elapsedTime));
-			}
-
-		}, 6000, 4000);
-
-	}
-
-	private void removeOverlay(String key) {
-		for (int i = 0; i < map.getOverlays().size(); i++) {
-			if (map.getOverlays().get(i).getKey() == key) {
-				map.getOverlays().remove(i);
-			}
-		}
-	}
-
-	/* Test for Hazard send */
-
-	public void sendPosHazard(String lat1, String lng1)
-			throws ClientProtocolException, IOException, URISyntaxException {
-
-		StringBuilder url = new StringBuilder(URL_hazards);
-		HttpPost request = new HttpPost(url.toString());
-
-		List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-		nameValuePairs.add(new BasicNameValuePair("descriptor", "1"));
-		nameValuePairs.add(new BasicNameValuePair("name", "MOCK"));
-		nameValuePairs.add(new BasicNameValuePair("level", "2"));
-
-		nameValuePairs.add(new BasicNameValuePair("lat1", lat1));
-		nameValuePairs.add(new BasicNameValuePair("lng1", lng1));
-
-		UrlEncodedFormEntity form = new UrlEncodedFormEntity(nameValuePairs,
-				"UTF-8");
-		request.setEntity(form);
-		client.execute(request);
-	}
-
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-	}
-
-	public void onSensorChanged(SensorEvent event) {
-		if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-			mGravity = event.values;
-		if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
-			mGeomagnetic = event.values;
-		if (mGravity != null && mGeomagnetic != null) {
-			float R[] = new float[9];
-			float I[] = new float[9];
-			boolean success = SensorManager.getRotationMatrix(R, I, mGravity,
-					mGeomagnetic);
-			if (success) {
-				float orientation[] = new float[3];
-				SensorManager.getOrientation(R, orientation);
-				azimut = Math.toDegrees(orientation[0]); // orientation
-															// contains: azimut,
-															// pitch and roll
-			}
-		}
-	}
-
 	/**
 	 * ------------------------------------------------------------------//
 	 * 
@@ -1053,22 +751,305 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 		// resultView.setVisibility(View.VISIBLE);
 		((AudioManager) getSystemService(Context.AUDIO_SERVICE))
 				.playSoundEffect(Sounds.SUCCESS);
-		try {
-			sendPosHazard("38.9", "-77");
-		} catch (ClientProtocolException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+
+		// sendPosHazard("38.9", "-77");
+
 		tts.speak("Hazard Detected and Plotted", TextToSpeech.QUEUE_FLUSH, null);
 
 		// resultView.setVisibility(View.INVISIBLE);
 		session.resume();
+	}
+
+	private void requestData() {
+		RestAdapter adapter = new RestAdapter.Builder().setEndpoint(ENDPOINT)
+				.build();
+
+		UnitAPI unit_api = adapter.create(UnitAPI.class);
+		HazardAPI hazard_api = adapter.create(HazardAPI.class);
+		PathAPI path_api = adapter.create(PathAPI.class);
+
+		/*
+		 * GET All Unit Data
+		 */
+
+		unit_api.getUnits(new Callback<List<Unit>>() {
+
+			@Override
+			public void success(List<Unit> units, Response response) {
+				PathActivity.this.units = units;
+			}
+
+			@Override
+			public void failure(RetrofitError error) {
+				Log.d("Failure UnitGet()", error.getMessage());
+
+			}
+		});
+
+		/*
+		 * POST All Unit Data
+		 */
+
+		// myself.setBearing(String.valueOf("25.53"));
+		// myself.setLat(String.valueOf("33"));
+		// myself.setLng(String.valueOf("-77"));
+
+		unit_api.sendPos(myself, new Callback<Unit>() {
+
+			@Override
+			public void success(Unit t, Response response) {
+
+			}
+
+			@Override
+			public void failure(RetrofitError error) {
+				Log.d("Failure UnitPost()", error.getMessage());
+			}
+
+		});
+
+		/*
+		 * GET Hazard Data
+		 */
+
+		hazard_api.getHazards(new Callback<List<Hazard>>() {
+
+			@Override
+			public void success(List<Hazard> hazards, Response response) {
+				PathActivity.this.hazards = hazards;
+			}
+
+			@Override
+			public void failure(RetrofitError error) {
+				Log.d("Failure HazardGet()", error.getMessage());
+
+			}
+		});
+
+		/*
+		 * GET Path Data
+		 */
+
+		path_api.getPaths(new Callback<List<Path>>() {
+
+			@Override
+			public void success(List<Path> paths, Response response) {
+				PathActivity.this.paths = paths;
+
+			}
+
+			@Override
+			public void failure(RetrofitError error) {
+				Log.d("Failure PathGet()", error.getMessage());
+
+			}
+
+		});
+
+		/*
+		 * Update Display with new Data
+		 */
+
+		PathActivity.this.runOnUiThread(new Runnable() {
+			public void run() {
+				updateDisplay();
+			}
+		});
+
+	}
+
+	private void updateDisplay() {
+		removeOverlay();
+
+		if (units != null) {
+			addUnits();
+		}
+		if (hazards != null) {
+			addHazard();
+		}
+		if (paths != null) {
+			addLines();
+		}
+
+		/*
+		 * For Debugging Purposes
+		 */
+
+		text.setText("Received Data:\n");
+
+		if (units != null) {
+			text.append("----Units:");
+			for (int i = 0; i < units.size(); i++) {
+				text.append("\n" + units.get(i).toString());
+			}
+		}
+
+		if (hazards != null) {
+			text.append("\n----Hazards:");
+			for (int i = 0; i < hazards.size(); i++) {
+				text.append("\n" + hazards.get(i).toString());
+			}
+		}
+
+		if (paths != null) {
+			text.append("\n----Path:");
+			for (int i = 0; i < paths.size(); i++) {
+				text.append("\n" + paths.get(i).toString());
+			}
+		}
+	}
+
+	private void addUnits() {
+
+		// list of GeoPoint objects to be used to draw line
+		Drawable friendly = getResources().getDrawable(
+				R.drawable.friendly_marker);
+		Drawable neutral = getResources()
+				.getDrawable(R.drawable.neutral_marker);
+		Drawable enemy = getResources().getDrawable(R.drawable.enemy_marker);
+
+		final DefaultItemizedOverlay friendlyPoi = new DefaultItemizedOverlay(
+				friendly);
+		for (Unit unit : units) {
+			if (unit.getType().equals("friendly")) {
+				friendlyPoi
+						.addItem(new OverlayItem(new GeoPoint(unit.getLat(),
+								unit.getLng()), unit.getID(), "Type: "
+								+ unit.getType()));
+			}
+
+		}
+
+		friendlyPoi.setTapListener(new ItemizedOverlay.OverlayTapListener() {
+			public void onTap(GeoPoint pt, MapView mapView) {
+				// when tapped, show the annotation for the overlayItem
+				int lastTouchedIndex = friendlyPoi.getLastFocusedIndex();
+				if (lastTouchedIndex > -1) {
+					OverlayItem tapped = friendlyPoi.getItem(lastTouchedIndex);
+					annotation.showAnnotationView(tapped);
+				}
+			}
+		});
+		friendlyPoi.setKey("friendlyPoi");
+		map.getOverlays().add(friendlyPoi);
+
+		final DefaultItemizedOverlay neutralPoi = new DefaultItemizedOverlay(
+				neutral);
+		for (Unit unit : units) {
+			if (!(unit.getType().equals("enemy") || unit.getType().equals(
+					"friendly"))) {
+				neutralPoi
+						.addItem(new OverlayItem(new GeoPoint(unit.getLat(),
+								unit.getLng()), unit.getID(), "Type: "
+								+ unit.getType()));
+			}
+
+		}
+
+		neutralPoi.setTapListener(new ItemizedOverlay.OverlayTapListener() {
+			public void onTap(GeoPoint pt, MapView mapView) {
+				// when tapped, show the annotation for the overlayItem
+				int lastTouchedIndex = neutralPoi.getLastFocusedIndex();
+				if (lastTouchedIndex > -1) {
+					OverlayItem tapped = neutralPoi.getItem(lastTouchedIndex);
+					annotation.showAnnotationView(tapped);
+				}
+			}
+		});
+		neutralPoi.setKey("neutralPoi");
+		map.getOverlays().add(neutralPoi);
+
+		final DefaultItemizedOverlay enemyPoi = new DefaultItemizedOverlay(
+				enemy);
+		for (Unit unit : units) {
+			if (unit.getType().equals("enemy")) {
+				enemyPoi.addItem(new OverlayItem(new GeoPoint(unit.getLat(),
+						unit.getLng()), unit.getID(), "Type: " + unit.getType()));
+			}
+		}
+
+		enemyPoi.setTapListener(new ItemizedOverlay.OverlayTapListener() {
+			public void onTap(GeoPoint pt, MapView mapView) {
+				// when tapped, show the annotation for the overlayItem
+				int lastTouchedIndex = enemyPoi.getLastFocusedIndex();
+				if (lastTouchedIndex > -1) {
+					OverlayItem tapped = enemyPoi.getItem(lastTouchedIndex);
+					annotation.showAnnotationView(tapped);
+				}
+			}
+		});
+		enemyPoi.setKey("enemyPoi");
+		map.getOverlays().add(enemyPoi);
+	}
+
+	private void addLines() {
+
+		Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+		paint.setColor(Color.RED);
+		paint.setStyle(Paint.Style.STROKE);
+		paint.setStrokeWidth(10);
+		/* list of GeoPoint objects to be used to draw line */
+		lineData = new ArrayList<GeoPoint>();
+		for (Path pt : paths) {
+			lineData.add(new GeoPoint(pt.getLat(), pt.getLng()));
+		}
+		/* apply line style & data and add to map */
+		lineOverlay = new LineOverlay(paint);
+		lineOverlay.setKey("paths");
+		lineOverlay.setData(lineData, true);
+		map.getOverlays().add(lineOverlay);
+
+	}
+
+	private void addHazard() {
+
+		Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+		paint.setColor(Color.BLUE);
+		paint.setStyle(Paint.Style.FILL);
+		paint.setAlpha(40);
+		for (Hazard hazard : hazards) {
+			List<GeoPoint> hazard_values = new ArrayList<GeoPoint>();
+			hazard_values.add(new GeoPoint(hazard.getLat1(), hazard.getLng1()));
+			hazard_values.add(new GeoPoint(hazard.getLat2(), hazard.getLng2()));
+
+			RectangleOverlay recOverlay = new RectangleOverlay(
+					BoundingBox.calculateBoundingBoxGeoPoint(hazard_values),
+					paint);
+			recOverlay.setKey("hazards");
+
+			map.getOverlays().add(recOverlay);
+		}
+	}
+
+	private void removeOverlay() {
+		map.getOverlays().clear();
+	}
+
+	protected boolean isRouteDisplayed() {
+		return false;
+	}
+
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+	}
+
+	public void onSensorChanged(SensorEvent event) {
+		if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
+			mGravity = event.values;
+		if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD)
+			mGeomagnetic = event.values;
+		if (mGravity != null && mGeomagnetic != null) {
+			float R[] = new float[9];
+			float I[] = new float[9];
+			boolean success = SensorManager.getRotationMatrix(R, I, mGravity,
+					mGeomagnetic);
+			if (success) {
+				float orientation[] = new float[3];
+				SensorManager.getOrientation(R, orientation);
+				azimut = Math.toDegrees(orientation[0]); // orientation
+															// contains: azimut,
+															// pitch and roll
+			}
+		}
 	}
 
 	/**
@@ -1076,7 +1057,23 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 	 */
 	public void onInit(int status) {
 		// TODO Auto-generated method stub
+	}
 
+	private void sendHazard(Hazard hazard) {
+
+		hazard_api.sendHazard(hazard, new Callback<Hazard>() {
+
+			@Override
+			public void success(Hazard t, Response response) {
+
+			}
+
+			@Override
+			public void failure(RetrofitError error) {
+				Log.d("Failure HazardPost()", error.getMessage().toString());
+			}
+
+		});
 	}
 
 }
