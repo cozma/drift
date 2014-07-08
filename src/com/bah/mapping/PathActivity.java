@@ -1,6 +1,7 @@
 package com.bah.mapping;
 
 import java.util.ArrayList;
+import com.bah.mapping.KeepAwakeService;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -80,7 +81,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 	List<Unit> units = null;
 	List<Hazard> hazards = null;
 	List<Path> paths = null;
-	TextView text;
+	// TextView text;
 
 	private Unit myself;
 
@@ -147,15 +148,24 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 
 	private static final int TYPES = Result.Type.IMAGE | Result.Type.QRCODE;
 
+	Hazard foundHazard;
+
 	/**
 	 * Sleep Detection
 	 */
 	private SleepDetector checkSleep;
 	private Context mContext;
+
+	private KeepAwakeService.KeepAwakeBinder mServiceBinder;
+
 	private ServiceConnection mServiceConn = new ServiceConnection() {
 		@Override
 		public void onServiceConnected(ComponentName name, IBinder service) {
+			if (service instanceof KeepAwakeService.KeepAwakeBinder) {
+				mServiceBinder = (KeepAwakeService.KeepAwakeBinder) service;
+			}
 
+			unbindService(this);
 		}
 
 		@Override
@@ -199,10 +209,9 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 				.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		coordList = new ArrayList<GeoPoint>();
 
-		// myself = new Unit("LeGlass", String.valueOf(azimut),
-		// String.valueOf(currentLocation.getLatitude()),
-		// String.valueOf(currentLocation.getLongitude()), "friendly",
-		// "team1", "0");
+		myself = new Unit("LeGlass", String.valueOf(azimut),
+				String.valueOf(String.valueOf("33")), String.valueOf(String
+						.valueOf("-77")), "friendly", "team1", "0");
 
 		// This is everything for Smart Pathfinder
 		// ----------------------------------------------------------------------
@@ -217,16 +226,16 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 		// this.map.setSatellite(true);
 
 		coordTextView = (TextView) this.findViewById(R.id.coordTextView);
-		zoomLevel = (TextView) this.findViewById(R.id.zoomTex);
+		// zoomLevel = (TextView) this.findViewById(R.id.zoomTex);
 
 		mGestureDetector = createGestureDetector(this);
 
-		zoomLvl = (SeekBar) findViewById(R.id.zoomLvl);
-		zoomLvl.setMax(18);
-		zoomLvl.setLeft(2);
+		// zoomLvl = (SeekBar) findViewById(R.id.zoomLvl);
+		// zoomLvl.setMax(18);
+		// zoomLvl.setLeft(2);
 		// zoomLvl.incrementProgressBy(1);
-		zoomLvl.setProgress(map.getZoomLevel()); // Set it to zero so it will
-		zoomLevel.setSingleLine();
+		// zoomLvl.setProgress(map.getZoomLevel()); // Set it to zero so it will
+		// zoomLevel.setSingleLine();
 
 		initScanner();
 
@@ -243,6 +252,10 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 		// Eye Scanner
 		// Bind the service to get access to the getDirectionsToRestArea method
 		bindService(new Intent(this, KeepAwakeService.class), mServiceConn, 0);
+		if (mServiceBinder != null) {
+			mServiceBinder.onUserPassedOut();
+			;
+		}
 
 	}
 
@@ -384,14 +397,14 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 					// do something on tap
 					if (!overview()) {
 						map.getController().setCenter(currentLocation);
-						zoomLvl.setProgress(map.getZoomLevel());
-						zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
+						// zoomLvl.setProgress(map.getZoomLevel());
+						// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 					} else {
 						tts.speak("viewing full path",
 								TextToSpeech.QUEUE_FLUSH, null);
 						overview();
-						zoomLvl.setProgress(map.getZoomLevel());
-						zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
+						// zoomLvl.setProgress(map.getZoomLevel());
+						// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 
 					}
 
@@ -402,15 +415,15 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 				} else if (gesture == Gesture.SWIPE_RIGHT) {
 					// do something on right (forward) swipe
 					map.getController().zoomIn();
-					zoomLvl.setProgress(map.getZoomLevel());
-					zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
+					// zoomLvl.setProgress(map.getZoomLevel());
+					// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 
 					return true;
 				} else if (gesture == Gesture.SWIPE_LEFT) {
 					// do something on left (backwards) swipe
 					map.getController().zoomOut();
-					zoomLvl.setProgress(map.getZoomLevel());
-					zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
+					// zoomLvl.setProgress(map.getZoomLevel());
+					// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 
 					return true;
 				} else if (gesture == Gesture.LONG_PRESS) {
@@ -423,13 +436,13 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 
 				} else if (gesture == Gesture.TWO_SWIPE_LEFT) {
 					map.getController().setZoom(6);
-					zoomLvl.setProgress(map.getZoomLevel());
-					zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
+					// zoomLvl.setProgress(map.getZoomLevel());
+					// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 
 				} else if (gesture == Gesture.TWO_SWIPE_RIGHT) {
 					map.getController().setZoom(14);
-					zoomLvl.setProgress(map.getZoomLevel());
-					zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
+					// zoomLvl.setProgress(map.getZoomLevel());
+					// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 
 				} else if (gesture == Gesture.TWO_SWIPE_UP) {
 
@@ -753,6 +766,25 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 				.playSoundEffect(Sounds.SUCCESS);
 
 		// sendPosHazard("38.9", "-77");
+		switch (result.getValue()) {
+		case "ToxicHazard":
+			foundHazard = new Hazard("4", "ToxicHazard", "1", "38.9", "-77",
+					"38.9", "-77");
+		case "VoltageHazard":
+			foundHazard = new Hazard("4", "VoltageHazard", "2", "38.9", "-77",
+					"38.9", "-77");
+		case "RestrictedHazard":
+			foundHazard = new Hazard("4", "RestrictedArea", "3", "38.9", "-77",
+					"38.9", "-77");
+		case "BioHazard":
+			foundHazard = new Hazard("4", "BioHazard", "4", "38.9", "-77",
+					"38.9", "-77");
+		case "FireHazard":
+			foundHazard = new Hazard("1", "FireHazard", "5", "38.9", "-77",
+					"38.9", "-77");
+		}
+
+		sendHazard(foundHazard);
 
 		tts.speak("Hazard Detected and Plotted", TextToSpeech.QUEUE_FLUSH, null);
 
@@ -790,9 +822,9 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 		 * POST All Unit Data
 		 */
 
-		// myself.setBearing(String.valueOf("25.53"));
-		// myself.setLat(String.valueOf("33"));
-		// myself.setLng(String.valueOf("-77"));
+		myself.setBearing(String.valueOf("25.53"));
+		myself.setLat(String.valueOf("33"));
+		myself.setLng(String.valueOf("-77"));
 
 		unit_api.sendPos(myself, new Callback<Unit>() {
 
@@ -874,29 +906,29 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback,
 		/*
 		 * For Debugging Purposes
 		 */
-
-		text.setText("Received Data:\n");
-
-		if (units != null) {
-			text.append("----Units:");
-			for (int i = 0; i < units.size(); i++) {
-				text.append("\n" + units.get(i).toString());
-			}
-		}
-
-		if (hazards != null) {
-			text.append("\n----Hazards:");
-			for (int i = 0; i < hazards.size(); i++) {
-				text.append("\n" + hazards.get(i).toString());
-			}
-		}
-
-		if (paths != null) {
-			text.append("\n----Path:");
-			for (int i = 0; i < paths.size(); i++) {
-				text.append("\n" + paths.get(i).toString());
-			}
-		}
+		//
+		// text.setText("Received Data:\n");
+		//
+		// if (units != null) {
+		// text.append("----Units:");
+		// for (int i = 0; i < units.size(); i++) {
+		// text.append("\n" + units.get(i).toString());
+		// }
+		// }
+		//
+		// if (hazards != null) {
+		// text.append("\n----Hazards:");
+		// for (int i = 0; i < hazards.size(); i++) {
+		// text.append("\n" + hazards.get(i).toString());
+		// }
+		// }
+		//
+		// if (paths != null) {
+		// text.append("\n----Path:");
+		// for (int i = 0; i < paths.size(); i++) {
+		// text.append("\n" + paths.get(i).toString());
+		// }
+		// }
 	}
 
 	private void addUnits() {
