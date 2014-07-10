@@ -1,0 +1,15 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.example.mapping.VideoActivity" >
+
+    <item
+        android:id="@+id/rec_vid"
+        android:title="Record"/>
+    <item
+        android:id="@+id/return_map"
+        android:title="Return To Map"/>
+    <item
+        android:id="@+id/exit_screen"
+        android:title="Exit"/>
+
+</menu>

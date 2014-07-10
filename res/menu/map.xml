@@ -12,9 +12,6 @@
         android:id="@+id/overview_path"
         android:title="Show Overview"/>
     <item
-        android:id="@+id/rec_vid"
-        android:title="Record Mission"/>
-        <item
         android:id="@+id/scan_start"
         android:title="Scan"/>
     <item

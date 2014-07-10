@@ -6,7 +6,7 @@
         android:id="@+id/menu_item_path"
         android:title="Find Path"/>
     <item
-        android:id="@+id/scan_start"
-        android:title="Scan"/>
+        android:id="@+id/menu_item_vid"
+        android:title="Open Camera"/>
 
 </menu>

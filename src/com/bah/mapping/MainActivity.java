@@ -162,8 +162,8 @@ public class MainActivity extends Activity {
 				// myIntent.putExtra("key", null); //Optional parameters
 				this.startActivity(myIntent);
 				return true;
-			case R.id.scan_start:
-				// startActivity(new Intent(this, ScanActivity.class));
+			case R.id.menu_item_vid:
+				startActivity(new Intent(this, VideoActivity.class));
 			}
 		}
 
@@ -183,55 +183,10 @@ public class MainActivity extends Activity {
 			// myIntent.putExtra("key", null); //Optional parameters
 			this.startActivity(myIntentClick);
 			return true;
-		case R.id.scan_start:
-			// startActivity(new Intent(this, ScanActivity.class));
+		case R.id.menu_item_vid:
+			startActivity(new Intent(this, VideoActivity.class));
 		}
 		return super.onOptionsItemSelected(item);
-	}
-
-	/**
-	 * Network connection testing
-	 * 
-	 * @param send_example
-	 *            sends an example coordinate from the glass
-	 */
-	public void test(final String send_example) {
-
-		new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					Socket s = new Socket(
-							InetAddress.getByName("54.198.34.151"), 3000);
-					System.out.println("Connected? " + s.isConnected());
-
-					PrintWriter writeToHost = new PrintWriter(
-							s.getOutputStream());
-					BufferedReader readFromHost = new BufferedReader(
-							new InputStreamReader(s.getInputStream()));
-					readFromHost.ready();
-
-					writeToHost.append(send_example);
-					System.out.print("\nSent: " + send_example + "\n");
-					writeToHost.flush();
-					String line = null;
-					while ((line = readFromHost.readLine()) != null) {
-						System.out.println("\n Received: " + line);
-					}
-					s.close();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-
-				runOnUiThread(new Runnable() {
-					/**
-					 * Runs the application UI
-					 */
-					public void run() {
-					}
-				});
-			}
-		}).start();
 	}
 
 	/*

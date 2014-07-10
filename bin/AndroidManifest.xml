@@ -11,8 +11,7 @@
         android:targetSdkVersion="16" />
 
     <supports-screens android:anyDensity="true" />
-    
-    
+
     <uses-permission android:name="com.example.mapdemo.permission.MAPS_RECEIVE" />
     <uses-permission android:name="com.google.android.glass.permission.DEVELOPMENT" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -68,9 +67,14 @@
         </activity>
         -->
         <activity
-            android:name="com.bah.mapping.PathActivity"   
+            android:name="com.bah.mapping.PathActivity"
             android:configChanges="orientation|screenSize"
             android:label="@string/title_activity_map" >
+        </activity>
+        <activity
+            android:name="com.bah.mapping.VideoActivity"
+            android:configChanges="orientation|screenSize"
+            android:label="@string/title_activity_vid" >
         </activity>
 
         <meta-data
@@ -80,4 +84,5 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
     </application>
+
 </manifest>

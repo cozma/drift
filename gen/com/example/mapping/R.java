@@ -1514,6 +1514,7 @@ containing a value of this type.
         public static final int map=0x7f090052;
         public static final int match_parent=0x7f09000c;
         public static final int menu_item_path=0x7f090056;
+        public static final int menu_item_vid=0x7f090057;
         public static final int middle=0x7f090024;
         public static final int monochrome=0x7f090013;
         public static final int never=0x7f09001c;
@@ -1526,12 +1527,13 @@ containing a value of this type.
         public static final int progress_circular=0x7f09002a;
         public static final int progress_horizontal=0x7f09002b;
         public static final int radio=0x7f090041;
-        public static final int rec_vid=0x7f09005b;
+        public static final int rec_vid=0x7f09005d;
         public static final int result=0x7f090054;
         public static final int result_id=0x7f090055;
+        public static final int return_map=0x7f09005e;
         public static final int sandbox=0x7f090008;
         public static final int satellite=0x7f090002;
-        public static final int scan_start=0x7f090057;
+        public static final int scan_start=0x7f09005b;
         public static final int search_badge=0x7f090044;
         public static final int search_bar=0x7f090043;
         public static final int search_button=0x7f090045;
@@ -1620,6 +1622,7 @@ containing a value of this type.
     public static final class menu {
         public static final int main=0x7f0e0000;
         public static final int map=0x7f0e0001;
+        public static final int video=0x7f0e0002;
     }
     public static final class raw {
         public static final int shot=0x7f060000;
@@ -1762,23 +1765,25 @@ containing a value of this type.
         /**  Long form sign-in button text [CHAR LIMIT=30] 
          */
         public static final int common_signin_button_text_long=0x7f07001e;
-        public static final int connect_loc=0x7f070034;
-        public static final int exit_screen=0x7f07003b;
-        public static final int menu_item_path=0x7f070036;
-        public static final int menu_item_pic=0x7f070038;
-        public static final int menu_item_vid=0x7f070037;
-        public static final int overview_path=0x7f070035;
-        public static final int rec_vid=0x7f070039;
-        public static final int scan_start=0x7f07003a;
+        public static final int connect_loc=0x7f070035;
+        public static final int exit_screen=0x7f07003c;
+        public static final int menu_item_path=0x7f070037;
+        public static final int menu_item_pic=0x7f070039;
+        public static final int menu_item_vid=0x7f070038;
+        public static final int overview_path=0x7f070036;
+        public static final int rec_vid=0x7f07003a;
+        public static final int return_map=0x7f07003d;
+        public static final int scan_start=0x7f07003b;
         public static final int title_activity_map=0x7f07002f;
         public static final int title_activity_scan=0x7f070030;
-        public static final int update_map=0x7f070033;
+        public static final int title_activity_vid=0x7f070031;
+        public static final int update_map=0x7f070034;
         /**  Text on a placeholder buy button when Google Play services is not
          available or up-to-date 
          */
         public static final int wallet_buy_button_place_holder=0x7f07001f;
-        public static final int zoom_in=0x7f070031;
-        public static final int zoom_out=0x7f070032;
+        public static final int zoom_in=0x7f070032;
+        public static final int zoom_out=0x7f070033;
     }
     public static final class style {
         /** 

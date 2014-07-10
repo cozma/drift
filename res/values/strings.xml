@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">drift</string> 
+    <string name="app_name">drift</string>
     <string name="action_settings">Settings</string>
     <string name="title_activity_map">PathActivity</string>
     <string name="title_activity_scan">ScanActivity</string>
+    <string name="title_activity_vid">ScanActivity</string>
     <string name="zoom_in">Zoom In</string>
     <string name="zoom_out">Zoom Out</string>
     <string name="update_map">Update Map</string>
     <string name="connect_loc">Connect</string>
     <string name="overview_path">Show Overview</string>
     <string name="menu_item_path">Find Path</string>
-    <string name="menu_item_vid">Record Path</string>
+    <string name="menu_item_vid">Open Camera</string>
     <string name="menu_item_pic">Send Live Picture</string>
     <string name="rec_vid">Record Mission</string>
     <string name="scan_start">Scan</string>
     <string name="exit_screen">Exit</string>
+    <string name="return_map">Return To Map</string>
 
 </resources>
