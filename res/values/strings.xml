@@ -14,7 +14,7 @@
     <string name="menu_item_path">Find Path</string>
     <string name="menu_item_vid">Open Camera</string>
     <string name="menu_item_pic">Send Live Picture</string>
-    <string name="rec_vid">Record Mission</string>
+    <string name="rec_vid">Record</string>
     <string name="scan_start">Scan</string>
     <string name="exit_screen">Exit</string>
     <string name="return_map">Return To Map</string>

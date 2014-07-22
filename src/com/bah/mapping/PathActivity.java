@@ -2,8 +2,6 @@ package com.bah.mapping;
 
 import java.util.ArrayList;
 
-import com.bah.mapping.KeepAwakeService;
-
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -84,16 +82,18 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	List<Unit> units = null;
 	List<Hazard> hazards = null;
 	List<Path> paths = null;
+
 	// TextView text;
+	private Unit myself; // Hardcoded Coordinate unit
 
-	private Unit myself;
-
+	/**
+	 * Variables to set up mapview and location points for a user
+	 */
 	protected MapView map;
 	private MyLocationOverlay myLocationOverlay;
 	private List<GeoPoint> coordList;
 	private GeoPoint currentLocation;
 	private AnnotationView annotation;
-
 	private List<GeoPoint> lineData;
 	LineOverlay lineOverlay;
 
@@ -115,84 +115,37 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	private static final int SPEECH_REQUEST = 0;
 	public final static String TAG = MainActivity.class.getSimpleName();
 
-	// // This is for the video recording
-	// private static final String TAGVID = "Recorder";
-	// public static SurfaceView mSurfaceView;
-	// public static SurfaceHolder mSurfaceHolder;
-	// public static Camera mCamera;
-	// public static boolean mPreviewRunning;
 	private GestureDetector mGestureDetector;
-	// private static final int TAKE_VIDEO = 101;
-	//
-	// SeekBar zoomLvl;
-	// TextView zoomLevel;
-	// Pattern mPattern;
-	//
-	// int mapZoom = 0;
-	//
+
+	/**
+	 * Map objects that can be used for finalization but temporarily not used
+	 * 
+	 */
+	SeekBar zoomLvl;
+	TextView zoomLevel;
+	Pattern mPattern;
+	int mapZoom = 0;
+
 	private UnitAPI unit_api;
 	private HazardAPI hazard_api;
 	private PathAPI path_api;
 
-	// /**
-	// * These are the fields to setup the image scanner
-	// */
-	// // Moodstocks API key/secret pair
-	// private static final String API_KEY = "ij3hks4yenn8abphhqpp";
-	// private static final String API_SECRET = "oJQ7dDkHU3ce6elQ";
-	//
-	// private boolean compatible = false;
-	// private Scanner scanner;
-	//
-	// private View resultView;
-	// private TextView resultID;
-	//
-	// private AutoScannerSession session = null;
-	//
-	// private static final int TYPES = Result.Type.IMAGE | Result.Type.QRCODE;
-	//
-	// Hazard foundHazard;
-
-	// /**
-	// * Sleep Detection
-	// */
-	// private SleepDetector checkSleep;
-	// private Context mContext;
-	//
-
 	/**
-	 * The sleep
-	 * detector---------------------------------------------------------
-	 */
-	// private KeepAwakeService.KeepAwakeBinder mServiceBinder;
-	//
-	// private ServiceConnection mServiceConn = new ServiceConnection() {
-	// @Override
-	// public void onServiceConnected(ComponentName name, IBinder service) {
-	// if (service instanceof KeepAwakeService.KeepAwakeBinder) {
-	// mServiceBinder = (KeepAwakeService.KeepAwakeBinder) service;
-	// }
-	//
-	// unbindService(this);
-	// }
-	//
-	// @Override
-	// public void onServiceDisconnected(ComponentName name) {
-	// // Do nothing
-	// }
-	// };
-
-	/**
-	 * Creates the activity for the smart path finder
+	 * Creates the activity for the path finder
 	 */
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		/**
+		 * Setup the configurations to keep the screen on, feature voice
+		 * commands on the activity and format the activity for glassware
+		 */
 		getWindow().requestFeature(WindowUtils.FEATURE_VOICE_COMMANDS);
 		setContentView(R.layout.activity_map);
-
 		Configuration.platform = Configuration.Platform.GOOGLE_GLASS;
 		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+		// Checks the SDK version to avoid future errors
 		if (android.os.Build.VERSION.SDK_INT > 9) {
 			StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder()
 					.permitAll().build();
@@ -202,10 +155,8 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		/*
 		 * Initial Set Up
 		 */
-
 		RestAdapter adapter = new RestAdapter.Builder().setEndpoint(ENDPOINT)
 				.build();
-
 		unit_api = adapter.create(UnitAPI.class);
 		hazard_api = adapter.create(HazardAPI.class);
 		path_api = adapter.create(PathAPI.class);
@@ -223,15 +174,19 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 
 		// This is everything for Smart Pathfinder
 		// ----------------------------------------------------------------------
-
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		init();
-		setupMyLocation();
+		init(); // Initializes the path onto the map
+		setupMyLocation(); // Sets up the user location (Mock Location)
 
+		// Sets the scale of the map
 		annotation = new AnnotationView(map);
 		annotation.setScaleX(.35f);
 		annotation.setScaleY(.35f);
 		// this.map.setSatellite(true);
+
+		/*
+		 * Sets up the Speech Responses
+		 */
 		tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
 			/**
 			 * TextToSpeech Initialization
@@ -255,17 +210,15 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		// zoomLvl.setProgress(map.getZoomLevel()); // Set it to zero so it will
 		// zoomLevel.setSingleLine();
 
-		// initScanner();
-
 		/*
 		 * Network Connection Polling
 		 */
 
-		new Timer().scheduleAtFixedRate(new TimerTask() {
-			public void run() {
-				requestData();
-			}
-		}, 0, 1000);
+		// new Timer().scheduleAtFixedRate(new TimerTask() {
+		// public void run() {
+		// requestData();
+		// }
+		// }, 0, 1000);
 
 		// // Eye Scanner
 		// // Bind the service to get access to the getDirectionsToRestArea
@@ -278,49 +231,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		// }
 
 	}
-
-	// /**
-	// * Initialize Sleep Detector
-	// */
-	// public void initSleepDetector() {
-	// mContext = this;
-	// checkSleep = new SleepDetector(mContext);
-	// checkSleep.setupReceiver();
-	// }
-	//
-	// /**
-	// * Initialize the scanner
-	// */
-	// public void initScanner() {
-	// compatible = Scanner.isCompatible();
-	// if (compatible) {
-	// try {
-	// scanner = Scanner.get();
-	// String path = Scanner.pathFromFilesDir(this, "scanner.db");
-	// scanner.open(path, API_KEY, API_SECRET);
-	// scanner.setSyncListener(this);
-	// scanner.sync();
-	// } catch (MoodstocksError e) {
-	// e.printStackTrace();
-	// }
-	//
-	// SurfaceView preview = (SurfaceView) findViewById(R.id.preview);
-	// preview.setZOrderOnTop(false); // necessary
-	// SurfaceHolder sfhTrackHolder = preview.getHolder();
-	// sfhTrackHolder.setFormat(PixelFormat.TRANSPARENT);
-	//
-	// try {
-	// session = new AutoScannerSession(this, Scanner.get(), this,
-	// preview);
-	// session.setResultTypes(TYPES);
-	// } catch (MoodstocksError e) {
-	// e.printStackTrace();
-	// }
-	// }
-	//
-	// resultView = findViewById(R.id.result);
-	// resultID = (TextView) findViewById(R.id.result_id);
-	// }
 
 	/**
 	 * This creates the panel that appears after the "Ok Glass" command
@@ -357,22 +267,21 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		if (featureId == WindowUtils.FEATURE_VOICE_COMMANDS) {
 
 			switch (item.getItemId()) {
-			case R.id.zoom_in:
+			case R.id.zoom_in: // Zooms in
 				tts.speak("zooming in", TextToSpeech.QUEUE_FLUSH, null);
 				map.getController().zoomIn();
 				// mapZoom = map.getZoomLevel();
 				// zoomLvl.setProgress(map.getZoomLevel());
 				// zoomLevel.setText((map.getZoomLevel() * 7.14) + "%");
-
 				break;
-			case R.id.zoom_out:
+			case R.id.zoom_out: // Zooms out
 				tts.speak("zooming out", TextToSpeech.QUEUE_FLUSH, null);
 				map.getController().zoomOut();
 
 				// zoomLvl.setProgress(map.getZoomLevel());
 				// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 				break;
-			case R.id.overview_path:
+			case R.id.overview_path: // Shows an overview of the path
 				tts.speak("viewing full path", TextToSpeech.QUEUE_FLUSH, null);
 				overview();
 				// zoomLvl.setProgress(map.getZoomLevel());
@@ -381,7 +290,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 			case R.id.exit_screen:
 				this.finish();
 				break;
-			case R.id.scan_start:
+			case R.id.scan_start: // Starts Video Activity to start a scan
 				Intent scan = new Intent(this, VideoActivity.class);
 				this.startActivity(scan);
 				break;
@@ -417,7 +326,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 						// zoomLevel.setText(map.getZoomLevel() * 7.14 + "%");
 
 					}
-
 					return true;
 				} else if (gesture == Gesture.TWO_TAP) {
 					// do something on two finger
@@ -485,21 +393,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		return gestureDetector;
 	}
 
-	// public void DecimalDigitsInputFilter(int digitsBeforeZero,
-	// int digitsAfterZero) {
-	// mPattern = Pattern.compile("[0-9]{0," + (digitsBeforeZero - 1)
-	// + "}+((\\.[0-9]{0," + (digitsAfterZero - 1) + "})?)||(\\.)?");
-	// }
-	//
-	// public CharSequence filter(CharSequence source, int start, int end,
-	// Spanned dest, int dstart, int dend) {
-	//
-	// Matcher matcher = mPattern.matcher(dest);
-	// if (!matcher.matches())
-	// return "";
-	// return null;
-	// }
-
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -516,15 +409,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	 */
 	protected void onDestroy() {
 		super.onDestroy();
-		// if (compatible) {
-		// try {
-		// scanner.close();
-		// scanner.destroy();
-		// scanner = null;
-		// } catch (MoodstocksError e) {
-		// e.printStackTrace();
-		// }
-		// }
 		android.os.Process.killProcess(android.os.Process.myPid());
 	}
 
@@ -714,106 +598,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 
 	}
 
-	//
-	// /**
-	// * ------------------------------------------------------------------//
-	// *
-	// *
-	// *
-	// * These are the scanner methods
-	// *
-	// *
-	// *
-	// * ------------------------------------------------------------------//
-	// */
-	//
-	// /**
-	// * Logging the start of the sync
-	// */
-	// public void onSyncStart() {
-	// Log.d("Moodstocks SDK", "Sync will start.");
-	// }
-	//
-	// /**
-	// * Logs the completion of the sync
-	// */
-	// public void onSyncComplete() {
-	// try {
-	// Log.d("Moodstocks SDK", "Sync succeeded (" + scanner.count()
-	// + " images)");
-	// } catch (MoodstocksError e) {
-	// e.printStackTrace();
-	// }
-	// }
-	//
-	// /**
-	// * Logs the failure of the sync
-	// */
-	// public void onSyncFailed(MoodstocksError e) {
-	// Log.d("Moodstocks SDK",
-	// "Sync error #" + e.getErrorCode() + ": " + e.getMessage());
-	// }
-	//
-	// /**
-	// * Logs the progress of the sync
-	// */
-	// public void onSyncProgress(int total, int current) {
-	// int percent = (int) ((float) current / (float) total * 100);
-	// Log.d("Moodstocks SDK", "Sync progressing: " + percent + "%");
-	// }
-	//
-	// /**
-	// * This handles an exeption if the camera fails to open
-	// */
-	// public void onCameraOpenFailed(Exception e) {
-	// // Implemented in a few steps
-	// }
-	//
-	// /**
-	// * This prints a debug message if there is a problem presented
-	// */
-	// public void onWarning(String debugMessage) {
-	// // Implemented in a few steps
-	// }
-	//
-	// /**
-	// * These actions are taken when a hazard is read to execute further
-	// actions
-	// * and restart the process
-	// */
-	// public void onResult(Result result) {
-	// // resultID.setText(result.getValue());
-	// // resultView.setVisibility(View.VISIBLE);
-	// ((AudioManager) getSystemService(Context.AUDIO_SERVICE))
-	// .playSoundEffect(Sounds.SUCCESS);
-	//
-	// // sendPosHazard("38.9", "-77");
-	// switch (result.getValue()) {
-	// case "ToxicHazard":
-	// foundHazard = new Hazard("4", "ToxicHazard", "1", "38.9", "-77",
-	// "38.9", "-77");
-	// case "VoltageHazard":
-	// foundHazard = new Hazard("4", "VoltageHazard", "2", "38.9", "-77",
-	// "38.9", "-77");
-	// case "RestrictedHazard":
-	// foundHazard = new Hazard("4", "RestrictedArea", "3", "38.9", "-77",
-	// "38.9", "-77");
-	// case "BioHazard":
-	// foundHazard = new Hazard("4", "BioHazard", "4", "38.9", "-77",
-	// "38.9", "-77");
-	// case "FireHazard":
-	// foundHazard = new Hazard("1", "FireHazard", "5", "38.9", "-77",
-	// "38.9", "-77");
-	// }
-	//
-	// sendHazard(foundHazard);
-	//
-	// tts.speak("Hazard Detected and Plotted", TextToSpeech.QUEUE_FLUSH, null);
-	//
-	// // resultView.setVisibility(View.INVISIBLE);
-	// session.resume();
-	// }
-
 	private void requestData() {
 		RestAdapter adapter = new RestAdapter.Builder().setEndpoint(ENDPOINT)
 				.build();
@@ -925,32 +709,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 			addLines();
 		}
 
-		/*
-		 * For Debugging Purposes because awhip likes catching bugs
-		 */
-		//
-		// text.setText("Received Data:\n");
-		//
-		// if (units != null) {
-		// text.append("----Units:");
-		// for (int i = 0; i < units.size(); i++) {
-		// text.append("\n" + units.get(i).toString());
-		// }
-		// }
-		//
-		// if (hazards != null) {
-		// text.append("\n----Hazards:");
-		// for (int i = 0; i < hazards.size(); i++) {
-		// text.append("\n" + hazards.get(i).toString());
-		// }
-		// }
-		//
-		// if (paths != null) {
-		// text.append("\n----Path:");
-		// for (int i = 0; i < paths.size(); i++) {
-		// text.append("\n" + paths.get(i).toString());
-		// }
-		// }
 	}
 
 	private void addUnits() {
