@@ -416,8 +416,8 @@ containing a value of this type.
         public static final int powered_by_google_light=0x7f020027;
     }
     public static final class id {
-        public static final int Light_Level=0x7f09001d;
-        public static final int Tilt_level=0x7f09001e;
+        public static final int Light_Level=0x7f09001e;
+        public static final int Tilt_level=0x7f09001d;
         public static final int book_now=0x7f090010;
         public static final int buyButton=0x7f09000a;
         public static final int buy_now=0x7f09000f;

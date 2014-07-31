@@ -78,6 +78,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	public static final String ENDPOINT = "http://54.198.34.151:7180";
 	public static final String UNIQUE_TEAM_ID = "/LeGlass"; // add a slash if
 															// used
+	public static final String MISSION_ID = "/0";
 
 	List<Unit> units = null;
 	List<Hazard> hazards = null;
@@ -214,11 +215,11 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		 * Network Connection Polling
 		 */
 
-		// new Timer().scheduleAtFixedRate(new TimerTask() {
-		// public void run() {
-		// requestData();
-		// }
-		// }, 0, 1000);
+		new Timer().scheduleAtFixedRate(new TimerTask() {
+			public void run() {
+				requestData();
+			}
+		}, 0, 1000);
 
 		// // Eye Scanner
 		// // Bind the service to get access to the getDirectionsToRestArea
@@ -577,7 +578,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	 * )
 	 */
 	public void surfaceCreated(SurfaceHolder holder) {
-		// TODO Auto-generated method stub
+		// Do nothing
 
 	}
 
@@ -586,7 +587,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	 */
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
-		// TODO Auto-generated method stub
+		// Do nothing
 
 	}
 
@@ -594,7 +595,7 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 	 * Handles cases of surfaces eliminated
 	 */
 	public void surfaceDestroyed(SurfaceHolder holder) {
-		// TODO Auto-generated method stub
+		// Do nothing
 
 	}
 
@@ -687,7 +688,6 @@ public class PathActivity extends Activity implements SurfaceHolder.Callback {
 		/*
 		 * Update Display with new Data
 		 */
-
 		PathActivity.this.runOnUiThread(new Runnable() {
 			public void run() {
 				updateDisplay();

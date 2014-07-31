@@ -10,6 +10,9 @@ import retrofit.RetrofitError;
 import retrofit.client.Response;
 
 import com.example.mapping.R;
+import com.feigdev.reusableandroidutils.graphics.PhotoCallback;
+import com.feigdev.reusableandroidutils.graphics.PhotoHandler;
+import com.google.android.glass.media.CameraManager;
 import com.google.android.glass.media.Sounds;
 import com.google.android.glass.view.WindowUtils;
 import com.moodstocks.android.AutoScannerSession;
@@ -27,12 +30,16 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.media.AudioManager;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
+import android.os.FileObserver;
 import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.TextToSpeech.OnInitListener;
+import android.support.v4.app.ShareCompat;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -51,7 +58,7 @@ import com.bah.mapping.EyeGestureManager;
 import com.bah.mapping.EyeGestureManager.Listener;
 
 public class VideoActivity extends Activity implements OnInitListener,
-		Scanner.SyncListener, AutoScannerSession.Listener {
+		Scanner.SyncListener, AutoScannerSession.Listener, PhotoCallback {
 
 	public final static String TAG = MainActivity.class.getSimpleName();
 
@@ -61,6 +68,7 @@ public class VideoActivity extends Activity implements OnInitListener,
 	public static SurfaceHolder mSurfaceHolder;
 	public static Camera mCamera;
 	public static boolean mPreviewRunning;
+	private static final int TAKE_PICTURE_REQUEST = 1;
 	// private GestureDetector mGestureDetector;
 	private static final int TAKE_VIDEO = 101;
 
@@ -99,10 +107,10 @@ public class VideoActivity extends Activity implements OnInitListener,
 	/**
 	 * Eye Gesture Setup
 	 */
-	private EyeGestureManager mEyeGestureManager;
-	private EyeGestureListener mEyeGestureListener;
-
-	private EyeGesture distress = EyeGesture.DOUBLE_BLINK;
+	// private EyeGestureManager mEyeGestureManager;
+	// private EyeGestureListener mEyeGestureListener;
+	//
+	// private EyeGesture distress = EyeGesture.DOUBLE_BLINK;
 
 	private AudioManager success;
 
@@ -112,8 +120,11 @@ public class VideoActivity extends Activity implements OnInitListener,
 	private SensorManager sensorManager;
 	private SensorEventListener sensorListener;
 
+	private Camera camera;
+	private String pictureFile;
+
 	/**
-	 * Creates the activity for the smart path finder
+	 * Creates the activity for the backlog and scanner
 	 */
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -132,26 +143,12 @@ public class VideoActivity extends Activity implements OnInitListener,
 
 		// Light sensor
 		lightAmountLevel = (TextView) findViewById(R.id.Light_Level);
-		// lightAmountLevel.setVisibility(View.VISIBLE);
-		// lightAmountLevel.bringToFront();
-		// lightAmountLevel.invalidate();
-		// SensorManager sensor = (SensorManager)
-		// getSystemService(SENSOR_SERVICE);
-		// Sensor lightLevel = sensor.getDefaultSensor(Sensor.TYPE_LIGHT);
-		// Sensor tiltLevel =
-		// sensor.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		// sensor.registerListener(LightSensorListener, lightLevel,
-		// SensorManager.SENSOR_DELAY_NORMAL);
 
 		// Accelerometer
 		tiltAmountLevel = (TextView) findViewById(R.id.Tilt_level);
 
 		initScanner();
 
-		// mEyeGestureManager = EyeGestureManager.from(this);
-		// mEyeGestureListener = new EyeGestureListener();
-		// mEyeGestureManager.enableDetectorPersistently(distress, true);
-		// mEyeGestureManager.register(distress, mEyeGestureListener);
 
 		tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
 			/**
@@ -173,40 +170,41 @@ public class VideoActivity extends Activity implements OnInitListener,
 			 * Hazard to the server
 			 */
 			public void onSensorChanged(SensorEvent event) {
-				if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
-					lightAmountLevel.setText("LIGHT: " + event.values[0]
-							+ " SI Lux");
-					// tts.speak("Light Level " + event.values.toString(),
-					// TextToSpeech.QUEUE_FLUSH, null);
-					int maxLightLevel = 13000;
-					if (event.values[0] > 13000) {
-						// Sends a Flash Hazard off a large Light committed
-						((AudioManager) getSystemService(Context.AUDIO_SERVICE))
-								.playSoundEffect(Sounds.ERROR);
-						resultID.setText("Flash Hazard");
-						foundHazard = new Hazard("1", "FlashHazard", "7",
-								"38.9", "-77", "38.9", "-77", "0", "7");
 
+				/**
+				 * Sets up the Accelerometer for Immobility Checks
+				 */
+				if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+					// Check to see if user is tilted in a direction
+					double tiltValue = event.values[0];
+					DecimalFormat tiltLimit = new DecimalFormat("#.000");
+					String tiltFormatted = tiltLimit.format(tiltValue);
+					tiltAmountLevel.setText("TILT: " + tiltFormatted + "°");
+					if ((tiltValue < -9) || (tiltValue > 9)) {
+						// Send Hazard to map'
+						setVisible();
+						resultID.setText("Immobile Hazard");
+						foundHazard = new Hazard("1", "ImmobileHazard", "8",
+								"38.9", "-77", "38.9", "-77", "0", "8");
 					}
-				}
+					// else if (event.sensor.getType() == Sensor.TYPE_LIGHT) {
+					// lightAmountLevel.setText("LIGHT: " + event.values[0]
+					// + " SI Lux");
+					// // tts.speak("Light Level " + event.values.toString(),
+					// // TextToSpeech.QUEUE_FLUSH, null);
+					// int maxLightLevel = 13000;
+					// if (event.values[0] > 13000) {
+					// // Sends a Flash Hazard off a large Light committed
+					// ((AudioManager) getSystemService(Context.AUDIO_SERVICE))
+					// .playSoundEffect(Sounds.ERROR);
+					// resultID.setText("Flash Hazard");
+					// foundHazard = new Hazard("1", "FlashHazard", "7",
+					// "38.9", "-77", "38.9", "-77", "0", "7");
+					//
+					// }
+					// }
 
-				// Not being used for performance measures
-				// else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
-				// {
-				// // Check to see if user is tilted in a direction
-				// double tiltValue = event.values[0];
-				// DecimalFormat tiltLimit = new DecimalFormat("#.000");
-				// String tiltFormatted = tiltLimit.format(tiltValue);
-				// tiltAmountLevel.setText("TILT: " + tiltFormatted + "°");
-				// if ((tiltValue < -9) || (tiltValue > 9)) {
-				// // Send Hazard to map'
-				// setVisible();
-				// resultID.setText("Immobile Hazard");
-				// foundHazard = new Hazard("1", "ImmobileHazard", "8",
-				// "38.9", "-77", "38.9", "-77", "0", "8");
-				// }
-				//
-				// }
+				}
 
 				// sendHazard(foundHazard); //Sends the Hazard to the server
 
@@ -274,7 +272,17 @@ public class VideoActivity extends Activity implements OnInitListener,
 			openOptionsMenu(); // open the option menu on tap
 			return true; // return true if you handled this event
 		}
-		return super.onKeyDown(keyCode, event);
+		if (keyCode == KeyEvent.KEYCODE_CAMERA) {
+			// Stop the preview and release the camera.
+			// Execute your logic as quickly as possible
+			// so the capture happens quickly.
+			session.stop();
+			// takePicture();
+			return false;
+		} else {
+			return super.onKeyDown(keyCode, event);
+		}
+
 	}
 
 	/**
@@ -288,19 +296,21 @@ public class VideoActivity extends Activity implements OnInitListener,
 		case R.id.rec_vid:
 			tts.speak("now recording", TextToSpeech.QUEUE_FLUSH, null);
 
+			session.stop();
 			Intent videoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
 
 			startActivityForResult(videoIntent, TAKE_VIDEO);
 
-			File directory = new File(
-					Environment
-							.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
-					"Video");
+			// File directory = new File(
+			// Environment
+			// .getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
+			// "Video");
+			//
+			// File videoPath = new File(directory.getPath());
+			//
+			// tts.speak("file saved to " + videoPath, TextToSpeech.QUEUE_FLUSH,
+			// null);
 
-			File videoPath = new File(directory.getPath());
-
-			tts.speak("file saved to " + videoPath, TextToSpeech.QUEUE_FLUSH,
-					null);
 			break;
 		case R.id.return_map:
 			Intent myIntentClick = new Intent(this, PathActivity.class);
@@ -308,8 +318,8 @@ public class VideoActivity extends Activity implements OnInitListener,
 
 		case R.id.exit_screen:
 			this.finish();
-
 		}
+		// session.start();
 	}
 
 	/**
@@ -363,13 +373,71 @@ public class VideoActivity extends Activity implements OnInitListener,
 		return super.onGenericMotionEvent(event);
 	}
 
-	/*
-	 * @see android.app.Activity#onActivityResult(int, int,
-	 * android.content.Intent)
+	/**
+	 * Manual Version of Picture Capture
 	 */
+	// private void takePicture() {
+	// Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+	// startActivityForResult(intent, TAKE_PICTURE_REQUEST);
+	// }
+
+	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		// Do nothing
+		if (requestCode == TAKE_PICTURE_REQUEST && resultCode == RESULT_OK) {
+			String picturePath = data
+					.getStringExtra(CameraManager.EXTRA_PICTURE_FILE_PATH);
+			processPictureWhenReady(picturePath);
+		}
+
 		super.onActivityResult(requestCode, resultCode, data);
+	}
+
+	private void processPictureWhenReady(final String picturePath) {
+		final File pictureFile = new File(picturePath);
+
+		if (pictureFile.exists()) {
+			// The picture is ready; process it.
+		} else {
+			// The file does not exist yet. Before starting the file observer,
+			// you
+			// can update your UI to let the user know that the application is
+			// waiting for the picture (for example, by displaying the thumbnail
+			// image and a progress indicator).
+
+			final File parentDirectory = pictureFile.getParentFile();
+			FileObserver observer = new FileObserver(parentDirectory.getPath(),
+					FileObserver.CLOSE_WRITE | FileObserver.MOVED_TO) {
+				// Protect against additional pending events after CLOSE_WRITE
+				// or MOVED_TO is handled.
+				private boolean isFileWritten;
+
+				@Override
+				public void onEvent(int event, String path) {
+					if (!isFileWritten) {
+						// For safety, make sure that the file that was created
+						// in
+						// the directory is actually the one that we're
+						// expecting.
+						File affectedFile = new File(parentDirectory, path);
+						isFileWritten = affectedFile.equals(pictureFile);
+
+						if (isFileWritten) {
+							stopWatching();
+
+							// Now that the file is ready, recursively call
+							// processPictureWhenReady again (on the UI thread).
+							runOnUiThread(new Runnable() {
+								@Override
+								public void run() {
+									processPictureWhenReady(picturePath);
+								}
+							});
+						}
+					}
+				}
+			};
+			observer.startWatching();
+		}
 	}
 
 	/**
@@ -602,30 +670,69 @@ public class VideoActivity extends Activity implements OnInitListener,
 		}
 	}
 
-	// /**
-	// * On Activity Start
-	// */
-	// protected void onStart() {
-	// super.onStart();
-	// //mEyeGestureManager.stopDetector(distress);
-	// mEyeGestureManager.enableDetectorPersistently(distress, true);
-	// mEyeGestureManager.register(distress, mEyeGestureListener);
-	// }
-	//
-	// /**
-	// * On Activity Stop
-	// */
-	// protected void onStop() {
-	// super.onStop();
-	// mEyeGestureManager.unregister(distress, mEyeGestureListener);
-	// mEyeGestureManager.stopDetector(distress);
-	// }
-
 	/**
 	 * Needed to keep Activity from being abstract
 	 */
 	public void onInit(int status) {
 		// Do nothing
+	}
+
+	@Override
+	public void pictureTaken(String lastFile) {
+		pictureFile = lastFile;
+		camera.startPreview();
+	}
+
+	/**
+	 * Take a picture
+	 */
+	public void takePicture() {
+		Log.d(TAG, "takePicture");
+
+		camera.takePicture(null, null, new PhotoHandler(this));
+
+	}
+
+	/**
+	 * Uploads the image captured to a Google Drive account
+	 *
+	 */
+	private class DriveUpload extends AsyncTask<Void, Void, Void> {
+		/**
+		 * Background Actions
+		 */
+		protected Void doInBackground(Void... params) {
+			Log.d(TAG, "GlassPhotoDelay");
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+
+		/**
+		 * Post Execution of picture taken
+		 */
+		protected void onPostExecute(Void params) {
+			try {
+				//
+
+				// http://divingintoglass.blogspot.com/2014/01/how-to-upload-files-using-google-drive.html
+				Uri imageUri = Uri.fromFile(new File(pictureFile));
+				Intent shareIntent = ShareCompat.IntentBuilder
+						.from(getParent()).setText("#glassgif #throughglass")
+						.setType("image/gif").setStream(imageUri).getIntent()
+						.setPackage("com.google.android.apps.docs");
+
+				startActivity(shareIntent);
+
+				getParent().finish();
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}
+
 	}
 
 }

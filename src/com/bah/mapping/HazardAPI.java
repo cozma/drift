@@ -8,7 +8,7 @@ import retrofit.http.GET;
 import retrofit.http.POST;
 public interface HazardAPI {
 
-	@GET("/hazards")
+	@GET("/hazards" + PathActivity.MISSION_ID) // without mission_id returns all
 	public void getHazards(Callback<List<Hazard>> response);
 	
 	@POST("/hazards")

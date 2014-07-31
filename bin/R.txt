@@ -99,8 +99,8 @@ int drawable location_marker 0x7f020024
 int drawable neutral_marker 0x7f020025
 int drawable powered_by_google_dark 0x7f020026
 int drawable powered_by_google_light 0x7f020027
-int id Light_Level 0x7f09001d
-int id Tilt_level 0x7f09001e
+int id Light_Level 0x7f09001e
+int id Tilt_level 0x7f09001d
 int id book_now 0x7f090010
 int id buyButton 0x7f09000a
 int id buy_now 0x7f09000f
