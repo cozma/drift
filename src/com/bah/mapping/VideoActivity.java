@@ -122,6 +122,7 @@ public class VideoActivity extends Activity implements OnInitListener,
 
 	private Camera camera;
 	private String pictureFile;
+	private String pictureSavePath;
 
 	/**
 	 * Creates the activity for the backlog and scanner
@@ -148,7 +149,6 @@ public class VideoActivity extends Activity implements OnInitListener,
 		tiltAmountLevel = (TextView) findViewById(R.id.Tilt_level);
 
 		initScanner();
-
 
 		tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
 			/**
@@ -227,6 +227,8 @@ public class VideoActivity extends Activity implements OnInitListener,
 				sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT),
 				sensorManager.SENSOR_DELAY_GAME);
 
+		new DriveUpload().execute();
+
 	}
 
 	/**
@@ -277,7 +279,8 @@ public class VideoActivity extends Activity implements OnInitListener,
 			// Execute your logic as quickly as possible
 			// so the capture happens quickly.
 			session.stop();
-			// takePicture();
+			//pictureTaken(pictureSavePath);
+			//takePicture();
 			return false;
 		} else {
 			return super.onKeyDown(keyCode, event);
@@ -394,6 +397,7 @@ public class VideoActivity extends Activity implements OnInitListener,
 
 	private void processPictureWhenReady(final String picturePath) {
 		final File pictureFile = new File(picturePath);
+		pictureSavePath = picturePath;
 
 		if (pictureFile.exists()) {
 			// The picture is ready; process it.
@@ -638,39 +642,6 @@ public class VideoActivity extends Activity implements OnInitListener,
 	}
 
 	/**
-	 * EYE GESTURE CONTROLS-------------------------------------------------//
-	 */
-
-	/**
-	 * The listener for the eye gestures that come into the activity
-	 */
-	private class EyeGestureListener implements Listener {
-
-		/**
-		 * Stage Change
-		 */
-		public void onEnableStateChange(EyeGesture eyeGesture,
-				boolean paramBoolean) {
-			Log.i(TAG, eyeGesture + " state changed:" + paramBoolean);
-		}
-
-		/**
-		 * Detection Results in a sound
-		 */
-		public void onDetected(final EyeGesture eyeGesture) {
-			runOnUiThread(new Runnable() {
-				/**
-				 * Runs detector
-				 */
-				public void run() {
-					success.playSoundEffect(Sounds.SUCCESS);
-					Log.i(TAG, eyeGesture + " is detected");
-				}
-			});
-		}
-	}
-
-	/**
 	 * Needed to keep Activity from being abstract
 	 */
 	public void onInit(int status) {
@@ -680,7 +651,7 @@ public class VideoActivity extends Activity implements OnInitListener,
 	@Override
 	public void pictureTaken(String lastFile) {
 		pictureFile = lastFile;
-		camera.startPreview();
+		//camera.startPreview();
 	}
 
 	/**
@@ -688,7 +659,6 @@ public class VideoActivity extends Activity implements OnInitListener,
 	 */
 	public void takePicture() {
 		Log.d(TAG, "takePicture");
-
 		camera.takePicture(null, null, new PhotoHandler(this));
 
 	}
@@ -719,7 +689,7 @@ public class VideoActivity extends Activity implements OnInitListener,
 				//
 
 				// http://divingintoglass.blogspot.com/2014/01/how-to-upload-files-using-google-drive.html
-				Uri imageUri = Uri.fromFile(new File(pictureFile));
+				Uri imageUri = Uri.fromFile(new File(pictureSavePath));
 				Intent shareIntent = ShareCompat.IntentBuilder
 						.from(getParent()).setText("#glassgif #throughglass")
 						.setType("image/gif").setStream(imageUri).getIntent()
